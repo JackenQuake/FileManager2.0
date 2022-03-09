@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-// These classes represent backend to show TUI on particular system. They serve two purposes:
+// These classes represent backends to show TUI on particular system. They serve two purposes:
 // 1. Abstraction. While default implementation uses Console class of .Net Core, other backends are possible
 //    - ANSI codes for terminal emulation on *nix systems (or maybe to show TUI over network on remote terminal)
 //    - rendering in graphics mode to use TUI under GUI
@@ -29,8 +29,11 @@ namespace TUI {
         protected BufferBackend buffer_backend;
 
         public void AttachBufferBackend(BufferBackend backend) {
-            if (buffer_backend != null) throw new InvalidOperationException("TUI: Buffer backend already attached.");
-            buffer_backend = backend; backend.Resize(w, h);
+            if (buffer_backend != backend) {
+                if (buffer_backend != null) throw new InvalidOperationException("TUI: Buffer backend already attached.");
+                buffer_backend = backend;
+            }
+            backend.Resize(w, h);
             if (DefaultBackend == this) DefaultBackend = backend;
         }
 
@@ -42,7 +45,7 @@ namespace TUI {
         public virtual void Resize(int _w, int _h) { w = _w; h = _h; if (buffer_backend != null) buffer_backend.Resize(w, h); }
 
         // ---------- Utility function to verify coordinates
-        bool UseExceptions;                // Whether exceptions should be thrown on attempts to access out-of-bounds cells
+        bool UseExceptions = false;        // Whether exceptions should be thrown on attempts to access out-of-bounds cells
 
         protected bool Validate(int x, int y) {
             if ((x < 0) || (x >= w)) if (UseExceptions) throw new ArgumentOutOfRangeException("x", "TUI: coordinates outside output area"); else return false;
@@ -127,6 +130,7 @@ namespace TUI {
                     backend.OutChar(off_x+x, off_y+y, buffer[y*w+x].c, buffer[y*w+x].colors);
                     buffer[y*w+x].old_c = buffer[y*w+x].c; buffer[y*w+x].old_colors = buffer[y*w+x].colors;
                 }
+            backend.DoneUpdate();
         }
 
         // ---------- Cursor control and event processing pass requests to underlying backend
@@ -233,14 +237,23 @@ namespace TUI {
             cursor_x = x; cursor_y = y;
             if (cursor_visible == 2) DoneUpdate(); else { Console.SetCursorPosition(cursor_x, cursor_y); Console.CursorVisible = true; cursor_visible = 1; }
         }
-        public override void HideCursor() { Console.CursorVisible = false; cursor_visible = 0; }
+        public override void HideCursor() {
+            if (cursor_visible == 1) { Console.CursorVisible = false; output_y = -1; }
+            cursor_visible = 0;
+        }
 
         public override int GetEvent() { return 0; }
 
-        public void UpdateSize() { base.Resize(Console.WindowWidth, Console.WindowHeight); }
+        public bool UpdateSize() {
+            if ((w == Console.WindowWidth) && (h == Console.WindowHeight)) return false;
+            base.Resize(Console.WindowWidth, Console.WindowHeight);
+            Console.SetBufferSize(w, h); output_y = -1; return true;
+        }
 
         public override void Resize(int _w, int _h) { Console.SetWindowSize(_w, _h); UpdateSize(); }
 
-        public ConsoleBackend(bool SetDefault) : base(Console.WindowWidth, Console.WindowHeight) { if (SetDefault) DefaultBackend = this; }
+        public ConsoleBackend(bool SetDefault) : base(0, 0) {
+            UpdateSize(); if (SetDefault) DefaultBackend = this; cursor_visible = 1;
+        }
     }
 }

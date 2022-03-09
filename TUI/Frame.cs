@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace TUI {
     /// <summary>
@@ -51,116 +52,113 @@ namespace TUI {
     /// Class also maintains current output position and current color
     /// </summary>
     public class Frame : Rectangle {
-        public static Backend default_backend;
-        private Backend backend;
-        public bool OutsideException = false;  // Flag if an exception should be thrown for output outside area
+        protected Backend backend;
 
-        public Frame(Backend _backend, int _x, int _y, int _w, int _h) : base(_x, _y, _w, _h) { backend = _backend; }
-        public Frame(int _x, int _y, int _w, int _h) : this(default_backend, _x, _y, _w, _h) { }
+        public Frame(Backend _backend, int _x, int _y, int _w, int _h) : base(_x, _y, _w, _h)
+            { backend = _backend; CurrX = CurrY = 0; DefaultColors = 0x0F; }
+        public Frame(int _x, int _y, int _w, int _h) : this(Backend.DefaultBackend, _x, _y, _w, _h) { }
         public Frame(Backend _backend) : this(_backend, 0, 0, 0, 0) { }
-        public Frame() : this(default_backend, 0, 0, 0, 0) { }
+        public Frame() : this(Backend.DefaultBackend, 0, 0, 0, 0) { }
 
-        int curr_x, curr_y, default_colors;
+        public int CurrX, CurrY,    // Current output position
+                   DefaultColors;   // Currently used default colors
 
-        const int AlignRight = 1;
-        const int AlignLeft = 2;
-        const int AlignCenter = 3;
+        public const int AlignNone = 0,
+                         AlignRight = 1,
+                         AlignLeft = 2,
+                         AlignCenter = 3;
 
         private void WriteExt(char c, int width, int flags, int colors) {
             /*
             int i, l = 0;
-
             width = FixWidth(width, 1); if (width < 1) return;
+            if (CurrX + width > )
 
-
-
-            if (curr_x + width > )
-
-                if ((curr_x < 0) || (width <= 0) || (curr_y < 0) && (curr_y >= h))
+                if ((CurrX < 0) || (width <= 0) || (CurrY < 0) && (CurrY >= h))
                     if (OutsideException) throw new InvalidOperationException("Output outside area"); else return;
-            if (align != 0) { l = align*(width-1)/2; for (i = 0; i < l; i++) backend.OutChar(curr_x++, curr_y, ' ', colors); }
-            backend.OutChar(curr_x++, curr_y, c, colors);
-            if (align == 1) { l = width-1-l; for (i = 0; i < l; i++) backend.OutChar(curr_x++, curr_y, ' ', colors); }
+            if (align != 0) { l = align*(width-1)/2; for (i = 0; i < l; i++) backend.OutChar(CurrX++, CurrY, ' ', colors); }
             */
+            backend.OutChar(x + CurrX++, y + CurrY, c, colors);
+            // if (align == 1) { l = width-1-l; for (i = 0; i < l; i++) backend.OutChar(CurrX++, CurrY, ' ', colors); }
         }
 
         public void WriteMany(char c, int num, int colors) {
             /*
-            if ((curr_x < 0) || (width <= 0) || (curr_y < 0) && (curr_y >= h))
+            if ((CurrX < 0) || (width <= 0) || (CurrY < 0) && (CurrY >= h))
                 if (OutsideException) throw new InvalidOperationException("Output outside area"); else return;
-            if (align != 0) { l = align*(width-1)/2; for (i = 0; i < l; i++) backend.OutChar(curr_x++, curr_y, ' ', colors); }
-            backend.OutChar(curr_x++, curr_y, c, colors);
-            if (align == 1) { l = width-1-l; for (i = 0; i < l; i++) backend.OutChar(curr_x++, curr_y, ' ', colors); }
+            if (align != 0) { l = align*(width-1)/2; for (i = 0; i < l; i++) backend.OutChar(CurrX++, CurrY, ' ', colors); }
+            backend.OutChar(CurrX++, CurrY, c, colors);
+            if (align == 1) { l = width-1-l; for (i = 0; i < l; i++) backend.OutChar(CurrX++, CurrY, ' ', colors); }
             */
         }
 
 
 
-        private void WriteExt(char[] c, int index, int count, int width, int flags, int colors) { for (int i = 0; i < c.Length; i++) Write(c[i]); }
-        private void WriteExt(string s, int width, int flags, int colors) { for (int i = 0; i < s.Length; i++) Write(s[i]); }
+        public void WriteExt(char[] c, int index, int count, int width, int flags, int colors) { for (int i = 0; i < c.Length; i++) Write(c[i]); }
+        public void WriteExt(string s, int width, int flags, int colors) { for (int i = 0; i < s.Length; i++) backend.OutChar(x + CurrX++, y + CurrY, s[i], colors); ; }
         /*!!!!!!*/
-        private void WriteExt(long v, int width, int flags, int colors) { Write(v.ToString()); }
+        public void WriteExt(long v, int width, int flags, int colors) { Write(v.ToString()); }
         /*!!!!!!*/
-        private void WriteExt(double v, int width, int flags, int colors) { Write(v.ToString()); }
-        private void WriteExt(object obj, int width, int flags, int colors) { Write(obj.ToString()); }
+        public void WriteExt(double v, int width, int flags, int colors) { Write(v.ToString()); }
+        public void WriteExt(object obj, int width, int flags, int colors) { Write(obj.ToString()); }
 
 
 
         // ---------- Variations of Write(...) functions
-        public void Write(char c) { WriteExt(c, 0, 0, default_colors); }
+        public void Write(char c) { WriteExt(c, 0, 0, DefaultColors); }
         public void Write(char c, int colors) { WriteExt(c, 0, 0, colors); }
-        public void Write(int x, int y, char c) { curr_x = x; curr_y = y; WriteExt(c, 0, 0, default_colors); }
-        public void Write(int x, int y, char c, int colors) { curr_x = x; curr_y = y; WriteExt(c, 0, 0, colors); }
-        public void Write(char[] c) { WriteExt(c, 0, c.Length, 0, 0, default_colors); }
+        public void Write(int x, int y, char c) { CurrX = x; CurrY = y; WriteExt(c, 0, 0, DefaultColors); }
+        public void Write(int x, int y, char c, int colors) { CurrX = x; CurrY = y; WriteExt(c, 0, 0, colors); }
+        public void Write(char[] c) { WriteExt(c, 0, c.Length, 0, 0, DefaultColors); }
         public void Write(char[] c, int colors) { WriteExt(c, 0, c.Length, 0, 0, colors); }
-        public void Write(int x, int y, char[] c) { curr_x = x; curr_y = y; WriteExt(c, 0, c.Length, 0, 0, default_colors); }
-        public void Write(int x, int y, char[] c, int colors) { curr_x = x; curr_y = y; WriteExt(c, 0, c.Length, 0, 0, colors); }
-        public void Write(char[] c, int index, int count) { WriteExt(c, index, Math.Min(count, c.Length - index), 0, 0, default_colors); }
+        public void Write(int x, int y, char[] c) { CurrX = x; CurrY = y; WriteExt(c, 0, c.Length, 0, 0, DefaultColors); }
+        public void Write(int x, int y, char[] c, int colors) { CurrX = x; CurrY = y; WriteExt(c, 0, c.Length, 0, 0, colors); }
+        public void Write(char[] c, int index, int count) { WriteExt(c, index, Math.Min(count, c.Length - index), 0, 0, DefaultColors); }
         public void Write(char[] c, int index, int count, int colors) { WriteExt(c, index, Math.Min(count, c.Length - index), 0, 0, colors); }
-        public void Write(int x, int y, char[] c, int index, int count) { curr_x = x; curr_y = y; WriteExt(c, index, Math.Min(count, c.Length - index), 0, 0, default_colors); }
-        public void Write(int x, int y, char[] c, int index, int count, int colors) { curr_x = x; curr_y = y; WriteExt(c, index, Math.Min(count, c.Length - index), 0, 0, colors); }
-        public void Write(string s) { WriteExt(s, 0, 0, default_colors); }
+        public void Write(int x, int y, char[] c, int index, int count) { CurrX = x; CurrY = y; WriteExt(c, index, Math.Min(count, c.Length - index), 0, 0, DefaultColors); }
+        public void Write(int x, int y, char[] c, int index, int count, int colors) { CurrX = x; CurrY = y; WriteExt(c, index, Math.Min(count, c.Length - index), 0, 0, colors); }
+        public void Write(string s) { WriteExt(s, 0, 0, DefaultColors); }
         public void Write(string s, int colors) { WriteExt(s, 0, 0, colors); }
-        public void Write(int x, int y, string s) { curr_x = x; curr_y = y; WriteExt(s, 0, 0, default_colors); }
-        public void Write(int x, int y, string s, int colors) { curr_x = x; curr_y = y; WriteExt(s, 0, 0, colors); }
-        public void Write(long v) { WriteExt(v, 0, 0, default_colors); }
+        public void Write(int x, int y, string s) { CurrX = x; CurrY = y; WriteExt(s, 0, 0, DefaultColors); }
+        public void Write(int x, int y, string s, int colors) { CurrX = x; CurrY = y; WriteExt(s, 0, 0, colors); }
+        public void Write(long v) { WriteExt(v, 0, 0, DefaultColors); }
         public void Write(long v, int colors) { WriteExt(v, 0, 0, colors); }
-        public void Write(int x, int y, long v) { curr_x = x; curr_y = y; WriteExt(v, 0, 0, default_colors); }
-        public void Write(int x, int y, long v, int colors) { curr_x = x; curr_y = y; WriteExt(v, 0, 0, colors); }
-        public void Write(double v) { WriteExt(v, 0, 0, default_colors); }
+        public void Write(int x, int y, long v) { CurrX = x; CurrY = y; WriteExt(v, 0, 0, DefaultColors); }
+        public void Write(int x, int y, long v, int colors) { CurrX = x; CurrY = y; WriteExt(v, 0, 0, colors); }
+        public void Write(double v) { WriteExt(v, 0, 0, DefaultColors); }
         public void Write(double v, int colors) { WriteExt(v, 0, 0, colors); }
-        public void Write(int x, int y, double v) { curr_x = x; curr_y = y; WriteExt(v, 0, 0, default_colors); }
-        public void Write(int x, int y, double v, int colors) { curr_x = x; curr_y = y; WriteExt(v, 0, 0, colors); }
-        public void Write(object obj) { WriteExt(obj, 0, 0, default_colors); }
+        public void Write(int x, int y, double v) { CurrX = x; CurrY = y; WriteExt(v, 0, 0, DefaultColors); }
+        public void Write(int x, int y, double v, int colors) { CurrX = x; CurrY = y; WriteExt(v, 0, 0, colors); }
+        public void Write(object obj) { WriteExt(obj, 0, 0, DefaultColors); }
         public void Write(object obj, int colors) { WriteExt(obj, 0, 0, colors); }
-        public void Write(int x, int y, object obj) { curr_x = x; curr_y = y; WriteExt(obj, 0, 0, default_colors); }
-        public void Write(int x, int y, object obj, int colors) { curr_x = x; curr_y = y; WriteExt(obj, 0, 0, colors); }
+        public void Write(int x, int y, object obj) { CurrX = x; CurrY = y; WriteExt(obj, 0, 0, DefaultColors); }
+        public void Write(int x, int y, object obj, int colors) { CurrX = x; CurrY = y; WriteExt(obj, 0, 0, colors); }
 
-        public void WriteExt(char c, int width, int flags) { WriteExt(c, width, flags, default_colors); }
-        public void WriteExt(int x, int y, char c, int width, int flags) { curr_x = x; curr_y = y; WriteExt(c, width, flags, default_colors); }
-        public void WriteExt(int x, int y, char c, int width, int flags, int colors) { curr_x = x; curr_y = y; WriteExt(c, width, flags, colors); }
-        public void WriteExt(char[] c, int width, int flags) { WriteExt(c, 0, c.Length, width, flags, default_colors); }
+        public void WriteExt(char c, int width, int flags) { WriteExt(c, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, char c, int width, int flags) { CurrX = x; CurrY = y; WriteExt(c, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, char c, int width, int flags, int colors) { CurrX = x; CurrY = y; WriteExt(c, width, flags, colors); }
+        public void WriteExt(char[] c, int width, int flags) { WriteExt(c, 0, c.Length, width, flags, DefaultColors); }
         public void WriteExt(char[] c, int width, int flags, int colors) { WriteExt(c, 0, c.Length, width, flags, colors); }
-        public void WriteExt(int x, int y, char[] c, int width, int flags) { curr_x = x; curr_y = y; WriteExt(c, 0, c.Length, width, flags, default_colors); }
-        public void WriteExt(int x, int y, char[] c, int width, int flags, int colors) { curr_x = x; curr_y = y; WriteExt(c, 0, c.Length, width, flags, colors); }
-        public void WriteExt(char[] c, int index, int count, int width, int flags) { WriteExt(c, index, Math.Min(count, c.Length - index), width, flags, default_colors); }
-        public void WriteExt(int x, int y, char[] c, int index, int count, int width, int flags) { curr_x = x; curr_y = y; WriteExt(c, index, Math.Min(count, c.Length - index), width, flags, default_colors); }
-        public void WriteExt(int x, int y, char[] c, int index, int count, int width, int flags, int colors) { curr_x = x; curr_y = y; WriteExt(c, index, Math.Min(count, c.Length - index), width, flags, colors); }
-        public void WriteExt(string s, int width, int flags) { WriteExt(s, width, flags, default_colors); }
-        public void WriteExt(int x, int y, string s, int width, int flags) { curr_x = x; curr_y = y; WriteExt(s, width, flags, default_colors); }
-        public void WriteExt(int x, int y, string s, int width, int flags, int colors) { curr_x = x; curr_y = y; WriteExt(s, width, flags, colors); }
-        public void WriteExt(long v, int width, int flags) { WriteExt(v, width, flags, default_colors); }
-        public void WriteExt(int x, int y, long v, int width, int flags) { curr_x = x; curr_y = y; WriteExt(v, width, flags, default_colors); }
-        public void WriteExt(int x, int y, long v, int width, int flags, int colors) { curr_x = x; curr_y = y; WriteExt(v, width, flags, colors); }
-        public void WriteExt(double v, int width, int flags) { WriteExt(v, width, flags, default_colors); }
-        public void WriteExt(int x, int y, double v, int width, int flags) { curr_x = x; curr_y = y; WriteExt(v, width, flags, default_colors); }
-        public void WriteExt(int x, int y, double v, int width, int flags, int colors) { curr_x = x; curr_y = y; WriteExt(v, width, flags, colors); }
-        public void WriteExt(object obj, int width, int flags) { WriteExt(obj, width, flags, default_colors); }
-        public void WriteExt(int x, int y, object obj, int width, int flags) { curr_x = x; curr_y = y; WriteExt(obj, width, flags, default_colors); }
-        public void WriteExt(int x, int y, object obj, int width, int flags, int colors) { curr_x = x; curr_y = y; WriteExt(obj, width, flags, colors); }
+        public void WriteExt(int x, int y, char[] c, int width, int flags) { CurrX = x; CurrY = y; WriteExt(c, 0, c.Length, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, char[] c, int width, int flags, int colors) { CurrX = x; CurrY = y; WriteExt(c, 0, c.Length, width, flags, colors); }
+        public void WriteExt(char[] c, int index, int count, int width, int flags) { WriteExt(c, index, Math.Min(count, c.Length - index), width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, char[] c, int index, int count, int width, int flags) { CurrX = x; CurrY = y; WriteExt(c, index, Math.Min(count, c.Length - index), width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, char[] c, int index, int count, int width, int flags, int colors) { CurrX = x; CurrY = y; WriteExt(c, index, Math.Min(count, c.Length - index), width, flags, colors); }
+        public void WriteExt(string s, int width, int flags) { WriteExt(s, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, string s, int width, int flags) { CurrX = x; CurrY = y; WriteExt(s, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, string s, int width, int flags, int colors) { CurrX = x; CurrY = y; WriteExt(s, width, flags, colors); }
+        public void WriteExt(long v, int width, int flags) { WriteExt(v, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, long v, int width, int flags) { CurrX = x; CurrY = y; WriteExt(v, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, long v, int width, int flags, int colors) { CurrX = x; CurrY = y; WriteExt(v, width, flags, colors); }
+        public void WriteExt(double v, int width, int flags) { WriteExt(v, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, double v, int width, int flags) { CurrX = x; CurrY = y; WriteExt(v, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, double v, int width, int flags, int colors) { CurrX = x; CurrY = y; WriteExt(v, width, flags, colors); }
+        public void WriteExt(object obj, int width, int flags) { WriteExt(obj, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, object obj, int width, int flags) { CurrX = x; CurrY = y; WriteExt(obj, width, flags, DefaultColors); }
+        public void WriteExt(int x, int y, object obj, int width, int flags, int colors) { CurrX = x; CurrY = y; WriteExt(obj, width, flags, colors); }
 
-        public void WriteMany(char c, int num) { WriteMany(c, num, default_colors); }
-        public void WriteMany(int x, int y, char c, int num) { curr_x = x; curr_y = y; WriteMany(c, num, default_colors); }
-        public void WriteMany(int x, int y, char c, int num, int colors) { curr_x = x; curr_y = y; WriteMany(c, num, colors); }
+        public void WriteMany(char c, int num) { WriteMany(c, num, DefaultColors); }
+        public void WriteMany(int x, int y, char c, int num) { CurrX = x; CurrY = y; WriteMany(c, num, DefaultColors); }
+        public void WriteMany(int x, int y, char c, int num, int colors) { CurrX = x; CurrY = y; WriteMany(c, num, colors); }
     }
 }
